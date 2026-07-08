@@ -66,10 +66,15 @@
   .utab{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
   .utab th,.utab td{border:1px solid #d7dae0;padding:9px 11px;text-align:center;vertical-align:middle}
   .utab th{background:#f2f3f5;font-family:'Oswald';text-transform:uppercase;font-size:11px;letter-spacing:.5px;color:#33363b;font-weight:700}
-  .utab th:first-child,.utab td:first-child{width:74px}
+  .utab th:first-child,.utab td:first-child{width:56px}
+  .utab th:last-child,.utab td:last-child{width:128px}
   .utab td:first-child{font-family:'Anton';color:var(--txt);font-size:15px}
   .utab td.ca{text-align:center}
   .utab td.ok{background:var(--vert-bg)} .utab td.ko{background:var(--ko-bg)}
+  .utab td.qc{font-family:'Oswald';font-weight:700;font-size:13px}
+  .utab td.qc.ok{background:var(--vert-bg);color:var(--vert)} .utab td.qc.ko{background:var(--ko-bg);color:var(--ko)}
+  .utab td.qc.na{background:#f2f3f5;color:#b6bbc2} .utab td.qc.fut{background:#fff;color:#c2c7ce}
+  .utab td.na{background:#f2f3f5;color:#b6bbc2;font-weight:700}
   .sok{color:var(--vert);font-weight:700} .sko{color:var(--ko);font-weight:700}
   .cell-note{display:block;margin-top:6px;font-size:11.5px;color:var(--ko);font-weight:600;text-align:center}
   .qbs{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
@@ -147,8 +152,11 @@ const topOk=(t)=>TOPDOCS.filter(d=>t.docs[d[0]][0]==='ok').length;
 function stats(t){
   let p=0,tot=0;
   TOPDOCS.forEach(d=>{tot++;if(t.docs[d[0]][0]==='ok')p++;});
-  for(let y=t.created.y;y<CURY;y++){tot++;if(appQs(t,y).every(q=>has(t,y,q)))p++;tot++;if(t.fiscale.includes(String(y)))p++;}
-  for(let q=1;q<=4;q++){const due=(CURY*4+(q-1))<=(DUEQ.y*4+(DUEQ.q-1));if(due){tot++;if(has(t,CURY,q))p++;}}
+  for(let y=t.created.y;y<=CURY;y++){
+    const sq=(y===t.created.y)?t.created.q:1;
+    for(let q=sq;q<=4;q++){if((y*4+(q-1))<=(DUEQ.y*4+(DUEQ.q-1))){tot++;if(has(t,y,q))p++;}}
+  }
+  if(t.created.y<=2025){tot++;if(t.fiscale.includes("2025"))p++;}
   return {miss:tot-p,pct:tot?Math.round(p/tot*100):100};
 }
 function ring(pct){
@@ -162,21 +170,26 @@ function detailHTML(t){
     return `<li><span class="st ${s}">${s==='ok'?ICONS.check:ICONS.x}</span><div><div class="dname">${d[1]}</div><div class="dnote">${note}</div></div></li>`;}).join('');
   let rows="";
   for(let y=t.created.y;y<=CURY;y++){
-    const aq=appQs(t,y);
-    if(y<CURY){
-      const caOk=aq.every(q=>has(t,y,q));
-      const ca=caOk?`<span class="sok">${MK.ok} À jour</span>`:`<span class="sko">${MK.ko} À fournir</span>`;
-      const fOk=t.fiscale.includes(String(y));
-      const f=fOk?`<span class="sok">${MK.ok} À jour</span>`:`<span class="sko">${MK.ko} À fournir</span>`;
-      rows+=`<tr><td>${y}</td><td class="ca ${caOk?'ok':'ko'}">${ca}</td><td class="${fOk?'ok':'ko'}">${f}</td></tr>`;
-    }else{
-      let qb="";for(let q=1;q<=4;q++){const due=(y*4+(q-1))<=(DUEQ.y*4+(DUEQ.q-1));const st=has(t,y,q)?"ok":(due?"ko":"fut");qb+=`<span class="qb ${st}">T${q} ${st==='ok'?'✓':st==='ko'?'✗':'·'}</span>`;}
-      rows+=`<tr><td>${y}</td><td class="ca"><div class="qbs">${qb}</div><span class="cell-note">Pensez à envoyer vos déclarations trimestrielles ${y} (année en cours).</span></td><td><span class="wait">Année en cours</span></td></tr>`;
+    const sq=(y===t.created.y)?t.created.q:1;
+    let qcells="";
+    for(let q=1;q<=4;q++){
+      let st;
+      if(q<sq) st="na";
+      else if(has(t,y,q)) st="ok";
+      else if((y*4+(q-1))<=(DUEQ.y*4+(DUEQ.q-1))) st="ko";
+      else st="fut";
+      const m=st==='ok'?'✓':st==='ko'?'✗':st==='na'?'—':'·';
+      qcells+=`<td class="qc ${st}">${m}</td>`;
     }
+    let f;
+    if(y<2025) f=`<td class="na">—</td>`;
+    else if(y===2025){const ok=t.fiscale.includes("2025");f=ok?`<td class="ok"><span class="sok">✓ À jour</span></td>`:`<td class="ko"><span class="sko">✗ À fournir</span></td>`;}
+    else f=`<td><span class="wait">Année en cours</span></td>`;
+    rows+=`<tr><td>${y}</td>${qcells}${f}</tr>`;
   }
   return `<div class="since">${t.sinceTxt.charAt(0).toUpperCase()+t.sinceTxt.slice(1)}</div><ul class="docs">${docs}</ul>
     <div class="section-title">URSSAF — par année depuis la création</div>
-    <table class="utab"><thead><tr><th>Année</th><th>Attestation de déclaration de CA (4 trimestres)</th><th>Attestation fiscale</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <table class="utab"><thead><tr><th rowspan="2">Année</th><th colspan="4">Attestation de déclaration de CA — par trimestre</th><th rowspan="2">Attestation fiscale</th></tr><tr><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 const accs=document.getElementById('accs');
