@@ -142,8 +142,8 @@ const TECHS=[
     fiscale:["2025"],
     docs:{ rcpro:["ok","Valide jusqu'au 31/07/2026 — renouvellement à prévoir"], certibiocide:["ok","N°059457 — valide jusqu'au 19/10/2028"], certiphyto:["ko","À fournir"] } },
   { name:"Sébastien CARNIS", created:{y:2026,q:1}, sinceTxt:"activité débutée en 2026",
-    present:[], fiscale:[],
-    docs:{ rcpro:["ko","À fournir"], certibiocide:["ko","À fournir — certificat repassé en 2026, document manquant"], certiphyto:["ko","À fournir"] } }
+    present:["2026-1"], fiscale:[],
+    docs:{ rcpro:["ok","Valide du 01/04 au 31/12/2026"], certibiocide:["ok","N°N125082 — valide jusqu'au 25/03/2031"], certiphyto:["ko","À fournir"] } }
 ];
 
 const appQs=(t,y)=>{const s=(y===t.created.y)?t.created.q:1;const a=[];for(let q=s;q<=4;q++)a.push(q);return a;};
